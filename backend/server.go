@@ -164,8 +164,51 @@ func patchSkillName(ctx *gin.Context) {
 		return
 	}
 
+	if err := skill.Name == ""; err != false {
+		fmt.Println("Error binding JSON:", err)
+		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error",
+			"message": "not be able to update skill name",
+		})
+		return
+	}
+
 	query := "UPDATE skill SET name=$2 WHERE key=$1 RETURNING key;"
 	if _, err := database.DB.Exec(query, key, skill.Name); err != nil {
+		fmt.Println("Error executing update:", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{"status": "error",
+			"message": "not be able to update skill name",
+		})
+		return
+	}
+
+	skill = getSkillByKeyDB(key)
+
+	ctx.JSON(http.StatusOK, gin.H{"status": "success", "data": skill})
+}
+
+func patchSkillDescription(ctx *gin.Context) {
+	fmt.Println("Entering patchSkillDescription handler")
+	key := ctx.Param("key")
+	var skill Skill
+
+	if err := ctx.BindJSON(&skill); err != nil {
+		fmt.Println("Error binding JSON:", err)
+		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error",
+			"message": "not be able to update skill name",
+		})
+		return
+	}
+
+	if err := skill.Description == ""; err != false {
+		fmt.Println("Error binding JSON:", err)
+		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error",
+			"message": "not be able to update skill name",
+		})
+		return
+	}
+
+	query := "UPDATE skill SET description=$2 WHERE key=$1 RETURNING key;"
+	if _, err := database.DB.Exec(query, key, skill.Description); err != nil {
 		fmt.Println("Error executing update:", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{"status": "error",
 			"message": "not be able to update skill name",
@@ -198,7 +241,7 @@ func main() {
 	r.PUT("/api/v1/skills/:key", putSkillByKey)
 	r.DELETE("/api/v1/skills/:key", deleteSkillByKey)
 	r.PATCH("/api/v1/skills/:key/actions/name", patchSkillName)
-	// r.PATCH("/api/v1/todos/:id/actions/title", patchTodoTitleByID)
+	r.PATCH("/api/v1/skills/:key/actions/description", patchSkillDescription)
 
 	port := os.Getenv("HOST")
 	// if port == "" {
