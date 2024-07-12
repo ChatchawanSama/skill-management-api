@@ -194,7 +194,7 @@ func patchSkillDescription(ctx *gin.Context) {
 	if err := ctx.BindJSON(&skill); err != nil {
 		fmt.Println("Error binding JSON:", err)
 		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error",
-			"message": "not be able to update skill name",
+			"message": "not be able to update skill description",
 		})
 		return
 	}
@@ -202,7 +202,7 @@ func patchSkillDescription(ctx *gin.Context) {
 	if err := skill.Description == ""; err != false {
 		fmt.Println("Error binding JSON:", err)
 		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error",
-			"message": "not be able to update skill name",
+			"message": "not be able to update skill description",
 		})
 		return
 	}
@@ -211,7 +211,42 @@ func patchSkillDescription(ctx *gin.Context) {
 	if _, err := database.DB.Exec(query, key, skill.Description); err != nil {
 		fmt.Println("Error executing update:", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{"status": "error",
-			"message": "not be able to update skill name",
+			"message": "not be able to update skill description",
+		})
+		return
+	}
+
+	skill = getSkillByKeyDB(key)
+
+	ctx.JSON(http.StatusOK, gin.H{"status": "success", "data": skill})
+}
+
+func patchSkillLogo(ctx *gin.Context) {
+	fmt.Println("Entering patchSkillLogo handler")
+	key := ctx.Param("key")
+	var skill Skill
+
+	if err := ctx.BindJSON(&skill); err != nil {
+		fmt.Println("Error binding JSON:", err)
+		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error",
+			"message": "not be able to update skill logo",
+		})
+		return
+	}
+
+	if err := skill.Logo == ""; err != false {
+		fmt.Println("Error binding JSON:", err)
+		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error",
+			"message": "not be able to update skill logo",
+		})
+		return
+	}
+
+	query := "UPDATE skill SET logo=$2 WHERE key=$1 RETURNING key;"
+	if _, err := database.DB.Exec(query, key, skill.Logo); err != nil {
+		fmt.Println("Error executing update:", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{"status": "error",
+			"message": "not be able to update skill logo",
 		})
 		return
 	}
@@ -242,12 +277,9 @@ func main() {
 	r.DELETE("/api/v1/skills/:key", deleteSkillByKey)
 	r.PATCH("/api/v1/skills/:key/actions/name", patchSkillName)
 	r.PATCH("/api/v1/skills/:key/actions/description", patchSkillDescription)
+	r.PATCH("/api/v1/skills/:key/actions/logo", patchSkillLogo)
 
 	port := os.Getenv("HOST")
-	// if port == "" {
-	// 	fmt.Println("Why Port Is String?!!")
-	// 	port = "8080" // default port if not specified
-	// }
 
 	srv := &http.Server{
 		Addr:    ":" + port,
