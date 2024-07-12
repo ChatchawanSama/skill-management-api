@@ -256,6 +256,41 @@ func patchSkillLogo(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"status": "success", "data": skill})
 }
 
+func patchSkillTags(ctx *gin.Context) {
+	fmt.Println("Entering patchSkillTags handler")
+	key := ctx.Param("key")
+	var skill Skill
+
+	if err := ctx.BindJSON(&skill); err != nil {
+		fmt.Println("Error binding JSON:", err)
+		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error",
+			"message": "not be able to update skill tags",
+		})
+		return
+	}
+
+	if err := skill.Tags == nil; err != false {
+		fmt.Println("Error binding JSON:", err)
+		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error",
+			"message": "not be able to update skill tags",
+		})
+		return
+	}
+
+	query := "UPDATE skill SET tags=$2 WHERE key=$1 RETURNING key;"
+	if _, err := database.DB.Exec(query, key, pq.Array(skill.Tags)); err != nil {
+		fmt.Println("Error executing update:", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{"status": "error",
+			"message": "not be able to update skill tags",
+		})
+		return
+	}
+
+	skill = getSkillByKeyDB(key)
+
+	ctx.JSON(http.StatusOK, gin.H{"status": "success", "data": skill})
+}
+
 func main() {
 	// Load environment variables from .env file
 	if err := godotenv.Load(); err != nil {
@@ -278,6 +313,7 @@ func main() {
 	r.PATCH("/api/v1/skills/:key/actions/name", patchSkillName)
 	r.PATCH("/api/v1/skills/:key/actions/description", patchSkillDescription)
 	r.PATCH("/api/v1/skills/:key/actions/logo", patchSkillLogo)
+	r.PATCH("/api/v1/skills/:key/actions/tags", patchSkillTags)
 
 	port := os.Getenv("HOST")
 
