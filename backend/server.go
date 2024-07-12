@@ -25,6 +25,37 @@ type Skill struct {
 	Tags        []string `json:"tags"`
 }
 
+func getSkill(ctx *gin.Context) {
+	fmt.Println("Entering getSkill handler")
+	skills := []Skill{}
+
+	rows, err := database.DB.Query("SELECT key, name, description, logo, tags FROM skill")
+	if err != nil {
+		log.Fatal("can't query all skills", err)
+	}
+
+	for rows.Next() {
+		var key, name, description, logo string
+		var tags pq.StringArray
+
+		err := rows.Scan(&key, &name, &description, &logo, &tags)
+		if err != nil {
+			log.Fatal("can't Scan row into variable", err)
+		}
+		fmt.Println(key, name, description, logo, tags)
+		skills = append(skills, Skill{key, name, description, logo, tags})
+	}
+
+	fmt.Println("query all skills success")
+	ctx.JSON(http.StatusOK, gin.H{"status": "success", "data": skills})
+}
+
+// func getSkillByID(ctx *gin.Context) {
+// 	fmt.Println("Entering getSkillByID handler")
+// 	var skill Skill
+
+// }
+
 func postSkill(ctx *gin.Context) {
 	fmt.Println("Entering postSkill handler")
 	var skill Skill
@@ -62,8 +93,8 @@ func main() {
 	database.CreateTable()
 
 	r := gin.Default()
-	// r.GET("/api/v1/todos", getTodo)
-	// r.GET("/api/v1/todos/:id", getTodoByID)
+	r.GET("/api/v1/skills", getSkill)
+	// r.GET("/api/v1/skills/:id", getSkillByID)
 	r.POST("/api/v1/skills", postSkill)
 	// r.PUT("/api/v1/todos/:id", putTodoByID)
 	// r.DELETE("/api/v1/todos/:id", deleteTodoByID)
