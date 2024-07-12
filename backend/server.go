@@ -50,7 +50,7 @@ func getSkill(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"status": "success", "data": skills})
 }
 
-func getSkillByID(ctx *gin.Context) {
+func getSkillByKey(ctx *gin.Context) {
 	fmt.Println("Entering getSkillByID handler")
 
 	key := ctx.Param("key")
@@ -93,6 +93,28 @@ func postSkill(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"status": "success", "data": skill})
 }
 
+func putSkillByKey(ctx *gin.Context) {
+	fmt.Println("Entering putSkillByKey handler")
+	key := ctx.Param("key")
+	var skill Skill
+
+	if err := ctx.BindJSON(&skill); err != nil {
+		fmt.Println("Error binding JSON:", err)
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	query := "UPDATE skill SET name=$2, description=$3, logo=$4, tags=$5 WHERE key=$1 RETURNING key;"
+	if _, err := database.DB.Exec(query, key, skill.Name, skill.Description, skill.Logo, pq.Array(skill.Tags)); err != nil {
+		fmt.Println("Error executing update:", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	fmt.Println("Skill update with Key:", skill.Key)
+	ctx.JSON(http.StatusOK, gin.H{"status": "success", "data": skill})
+}
+
 func main() {
 	// Load environment variables from .env file
 	if err := godotenv.Load(); err != nil {
@@ -108,9 +130,9 @@ func main() {
 
 	r := gin.Default()
 	r.GET("/api/v1/skills", getSkill)
-	r.GET("/api/v1/skills/:key", getSkillByID)
+	r.GET("/api/v1/skills/:key", getSkillByKey)
 	r.POST("/api/v1/skills", postSkill)
-	// r.PUT("/api/v1/todos/:id", putTodoByID)
+	r.PUT("/api/v1/skills/:key", putSkillByKey)
 	// r.DELETE("/api/v1/todos/:id", deleteTodoByID)
 	// r.PATCH("/api/v1/todos/:id/actions/status", patchTodoStatusByID)
 	// r.PATCH("/api/v1/todos/:id/actions/title", patchTodoTitleByID)
