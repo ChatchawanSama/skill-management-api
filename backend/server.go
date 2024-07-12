@@ -54,20 +54,11 @@ func getSkillByKey(ctx *gin.Context) {
 	fmt.Println("Entering getSkillByID handler")
 
 	key := ctx.Param("key")
-	q := "SELECT key, name, description, logo, tags FROM skill where key=$1"
 
-	row := database.DB.QueryRow(q, key)
-	var name, description, logo string
-	var tags pq.StringArray
+	skill := getSkillByKeyDB(key)
 
-	err := row.Scan(&key, &name, &description, &logo, &tags)
-	if err != nil {
-		log.Fatal("can't Scan row into variables", err)
-	}
-
-	fmt.Println("one row", key, name, description, logo, tags)
-	ctx.JSON(http.StatusOK, gin.H{"data": Skill{key, name, description, logo, tags}, "status": "success"})
-
+	// fmt.Println("one row", key, name, description, logo, tags)
+	ctx.JSON(http.StatusOK, gin.H{"data": skill, "status": "success"})
 }
 
 func postSkill(ctx *gin.Context) {
@@ -111,6 +102,7 @@ func putSkillByKey(ctx *gin.Context) {
 		return
 	}
 
+	skill.Key = key
 	fmt.Println("Skill update with Key:", skill.Key)
 	ctx.JSON(http.StatusOK, gin.H{"status": "success", "data": skill})
 }
@@ -143,6 +135,49 @@ func deleteSkillByKey(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"status": "success", "message": "Skill deleted"})
 }
 
+func getSkillByKeyDB(key string) Skill {
+	fmt.Println("Entering getSkillByKey handler")
+
+	q := "SELECT key, name, description, logo, tags FROM skill where key=$1"
+	row := database.DB.QueryRow(q, key)
+	var name, description, logo string
+	var tags pq.StringArray
+
+	err := row.Scan(&key, &name, &description, &logo, &tags)
+	if err != nil {
+		log.Fatal("can't Scan row into variables", err)
+	}
+
+	return Skill{key, name, description, logo, tags}
+}
+
+func patchSkillName(ctx *gin.Context) {
+	fmt.Println("Entering patchSkillName handler")
+	key := ctx.Param("key")
+	var skill Skill
+
+	if err := ctx.BindJSON(&skill); err != nil {
+		fmt.Println("Error binding JSON:", err)
+		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error",
+			"message": "not be able to update skill name",
+		})
+		return
+	}
+
+	query := "UPDATE skill SET name=$2 WHERE key=$1 RETURNING key;"
+	if _, err := database.DB.Exec(query, key, skill.Name); err != nil {
+		fmt.Println("Error executing update:", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{"status": "error",
+			"message": "not be able to update skill name",
+		})
+		return
+	}
+
+	skill = getSkillByKeyDB(key)
+
+	ctx.JSON(http.StatusOK, gin.H{"status": "success", "data": skill})
+}
+
 func main() {
 	// Load environment variables from .env file
 	if err := godotenv.Load(); err != nil {
@@ -162,7 +197,7 @@ func main() {
 	r.POST("/api/v1/skills", postSkill)
 	r.PUT("/api/v1/skills/:key", putSkillByKey)
 	r.DELETE("/api/v1/skills/:key", deleteSkillByKey)
-	// r.PATCH("/api/v1/todos/:id/actions/status", patchTodoStatusByID)
+	r.PATCH("/api/v1/skills/:key/actions/name", patchSkillName)
 	// r.PATCH("/api/v1/todos/:id/actions/title", patchTodoTitleByID)
 
 	port := os.Getenv("HOST")
