@@ -3,16 +3,50 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"skill-management-api/database"
 	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/lib/pq"
 )
+
+type Skill struct {
+	Key         string   `json:"key"`
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Logo        string   `json:"logo"`
+	Tags        []string `json:"tags"`
+}
+
+func postSkill(ctx *gin.Context) {
+	fmt.Println("Entering postSkill handler")
+	var skill Skill
+
+	if err := ctx.BindJSON(&skill); err != nil {
+		fmt.Println("Error binding JSON:", err)
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	query := "INSERT INTO skill (key, name, description, logo, tags) VALUES ($1, $2, $3, $4, $5) RETURNING key"
+	err := database.DB.QueryRow(query, skill.Key, skill.Name, skill.Description, skill.Logo, pq.Array(skill.Tags)).Scan(&skill.Key)
+	if err != nil {
+		fmt.Println("Error inserting new skill:", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	fmt.Println("Skill created with Key:", skill.Key)
+	// ctx.JSON(http.StatusCreated, skill)
+	ctx.JSON(http.StatusOK, gin.H{"status": "success", "data": skill})
+}
 
 func main() {
 	// Load environment variables from .env file
@@ -23,10 +57,14 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	database.ConnectDB()
+	defer database.DB.Close()
+	database.CreateTable()
+
 	r := gin.Default()
 	// r.GET("/api/v1/todos", getTodo)
 	// r.GET("/api/v1/todos/:id", getTodoByID)
-	// r.POST("/api/v1/todos", postTodo)
+	r.POST("/api/v1/skills", postSkill)
 	// r.PUT("/api/v1/todos/:id", putTodoByID)
 	// r.DELETE("/api/v1/todos/:id", deleteTodoByID)
 	// r.PATCH("/api/v1/todos/:id/actions/status", patchTodoStatusByID)
