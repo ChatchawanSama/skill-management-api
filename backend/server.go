@@ -57,8 +57,13 @@ func getSkillByKey(ctx *gin.Context) {
 
 	skill := getSkillByKeyDB(key)
 
-	// fmt.Println("one row", key, name, description, logo, tags)
-	ctx.JSON(http.StatusOK, gin.H{"data": skill, "status": "success"})
+	if skill.Key == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error",
+			"message": "Skill not found",
+		})
+	} else {
+		ctx.JSON(http.StatusOK, gin.H{"data": skill, "status": "success"})
+	}
 }
 
 func postSkill(ctx *gin.Context) {
@@ -75,7 +80,9 @@ func postSkill(ctx *gin.Context) {
 	err := database.DB.QueryRow(query, skill.Key, skill.Name, skill.Description, skill.Logo, pq.Array(skill.Tags)).Scan(&skill.Key)
 	if err != nil {
 		fmt.Println("Error inserting new skill:", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"status": "error",
+			"message": "Skill already exists",
+		})
 		return
 	}
 
@@ -87,7 +94,15 @@ func postSkill(ctx *gin.Context) {
 func putSkillByKey(ctx *gin.Context) {
 	fmt.Println("Entering putSkillByKey handler")
 	key := ctx.Param("key")
-	var skill Skill
+	var skill, check Skill
+
+	check = getSkillByKeyDB(key)
+	if check.Key == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"status": "error",
+			"message": "not be able to update skill",
+		})
+		return
+	}
 
 	if err := ctx.BindJSON(&skill); err != nil {
 		fmt.Println("Error binding JSON:", err)
@@ -145,7 +160,8 @@ func getSkillByKeyDB(key string) Skill {
 
 	err := row.Scan(&key, &name, &description, &logo, &tags)
 	if err != nil {
-		log.Fatal("can't Scan row into variables", err)
+		// log.Fatal("can't Scan row into variables", err)
+		return Skill{"", "", "", "", nil}
 	}
 
 	return Skill{key, name, description, logo, tags}
