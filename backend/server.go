@@ -115,6 +115,34 @@ func putSkillByKey(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"status": "success", "data": skill})
 }
 
+func deleteSkillByKey(ctx *gin.Context) {
+	fmt.Println("Entering deleteSkillByKey handler")
+	key := ctx.Param("key")
+
+	query := "DELETE FROM skill WHERE key=$1 RETURNING key;"
+	result, err := database.DB.Exec(query, key)
+	if err != nil {
+		fmt.Println("Error executing delete:", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "not be able to delete skill"})
+		return
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		fmt.Println("Error fetching affected rows:", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "not be able to delete skill"})
+		return
+	}
+
+	if rowsAffected == 0 {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "not be able to delete skill"})
+		return
+	}
+
+	fmt.Println("Delete success")
+	ctx.JSON(http.StatusOK, gin.H{"status": "success", "message": "Skill deleted"})
+}
+
 func main() {
 	// Load environment variables from .env file
 	if err := godotenv.Load(); err != nil {
@@ -133,7 +161,7 @@ func main() {
 	r.GET("/api/v1/skills/:key", getSkillByKey)
 	r.POST("/api/v1/skills", postSkill)
 	r.PUT("/api/v1/skills/:key", putSkillByKey)
-	// r.DELETE("/api/v1/todos/:id", deleteTodoByID)
+	r.DELETE("/api/v1/skills/:key", deleteSkillByKey)
 	// r.PATCH("/api/v1/todos/:id/actions/status", patchTodoStatusByID)
 	// r.PATCH("/api/v1/todos/:id/actions/title", patchTodoTitleByID)
 
