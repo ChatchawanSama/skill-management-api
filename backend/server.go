@@ -50,11 +50,25 @@ func getSkill(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"status": "success", "data": skills})
 }
 
-// func getSkillByID(ctx *gin.Context) {
-// 	fmt.Println("Entering getSkillByID handler")
-// 	var skill Skill
+func getSkillByID(ctx *gin.Context) {
+	fmt.Println("Entering getSkillByID handler")
 
-// }
+	key := ctx.Param("key")
+	q := "SELECT key, name, description, logo, tags FROM skill where key=$1"
+
+	row := database.DB.QueryRow(q, key)
+	var name, description, logo string
+	var tags pq.StringArray
+
+	err := row.Scan(&key, &name, &description, &logo, &tags)
+	if err != nil {
+		log.Fatal("can't Scan row into variables", err)
+	}
+
+	fmt.Println("one row", key, name, description, logo, tags)
+	ctx.JSON(http.StatusOK, gin.H{"data": Skill{key, name, description, logo, tags}, "status": "success"})
+
+}
 
 func postSkill(ctx *gin.Context) {
 	fmt.Println("Entering postSkill handler")
@@ -94,7 +108,7 @@ func main() {
 
 	r := gin.Default()
 	r.GET("/api/v1/skills", getSkill)
-	// r.GET("/api/v1/skills/:id", getSkillByID)
+	r.GET("/api/v1/skills/:key", getSkillByID)
 	r.POST("/api/v1/skills", postSkill)
 	// r.PUT("/api/v1/todos/:id", putTodoByID)
 	// r.DELETE("/api/v1/todos/:id", deleteTodoByID)
